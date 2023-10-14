@@ -1,5 +1,5 @@
 # BlackboardQuiztoDocx
-This project can read Quiz/assessment zip files from Blackboard LMS exports.  These are the output zip files which contain Quiz Questions and answers. 
+This project can read Quiz/assessment zip files from Blackboard LMS exports.  These are the output zip files which contain Quiz Questions and answers. This is handy to keep copies of your quizes/MCQs etc outside of the LMS and send to others including external examiners for example. (carefully check the content as output might go wrong, or be missed because of the manual html to docx conversion).
 
 The zip file is processed, and the quiz questions are output to a word docx file.  The word files will contain Questions (essay questions) and answers (if given in the quiz setup).  MCQs have correct answer highlighted and a separate output LAMs TBL word import format.
 
