@@ -103,11 +103,13 @@ def add_numbered_paragraph(doc,text, new_list=False, red=False):
 
 
 def update_docx_numbering(doc):
+    global root
     if root is not None:
         new_xml = etree.tostring(root, pretty_print=True)
         numbering_part = doc.part.numbering_part
         numbering_part._element.clear()
         numbering_part._element.append(etree.fromstring(new_xml))
+        root = None
 
 
 # Function to restart numbering
