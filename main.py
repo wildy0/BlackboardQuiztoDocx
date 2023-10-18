@@ -258,7 +258,10 @@ def convert_quiz_to_word_advanced(dat_content, word_file_path, bank_names, image
 
     else:
         for i, question in enumerate(questions):
-            doc.add_heading(f"Question: {i+1}", level=2)
+            if lams:
+                doc.add_paragraph(f"Question: {i+1}")
+            else:
+                doc.add_heading(f"Question: {i+1}", level=2)
             add_html_to_word(doc, question.get('text', 'N/A'), False, image_dir)
             correct_label = question.get('correct')
             labels = question.get('labels')
