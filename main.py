@@ -270,20 +270,30 @@ def convert_quiz_to_word_advanced(dat_content, word_file_path, bank_names, image
                 #para.style.number_format = 'a'
                 is_mcq = True
                 choice_text = html_to_plain_text(choice)
-
+                if j == 26:
+                    #here we have a problem because if j=26 then we have more than a-z and the code will create options
+                    #with characters from { to wierd control codes
+                    answer_text = "Answer: error" #set the answer to error to show it went wrong, but this is
+                    # not likely to ever happen
+                    break #break the loop so we don't continue past z
+                option_letter = chr(97 + j)
                 if label == correct_label:
                     if lams:
-                        answer_text = f"Answer: {chr(97 + j)}"
+                        answer_text = f"Answer: {option_letter}"
                         red = False
                     else:
                         red = True
                 else:
                     red = False
 
-                add_numbered_paragraph(doc, choice_text, new_list=new, red=red)
+                if not lams:
+                    add_numbered_paragraph(doc, choice_text, new_list=new, red=red)
+                else:
+                    doc.add_paragraph(f"{option_letter}) {choice_text}")
                 if new:
                     new = False
                 #run = para.add_run(f"{chr(65+j)}) {choice_text}")
+                # run = para.add_run(f"{chr(97+j)}) {choice_text}")
                 # if label == correct_label:
                 #     run.font.color.rgb = RGBColor(255, 0, 0)
                     #answer_text = f"Answer: {chr(65+j)}"
