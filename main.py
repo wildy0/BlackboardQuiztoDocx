@@ -59,12 +59,12 @@ def find_question_blocks(xml_content):
 
 
 def find_correct_label(item):
-    correct_label = None
+    correct_label = []
     for cond in item.findall('.//respcondition'):
         if cond.attrib.get('title') == "correct":
             content_elem = cond.find('.//varequal')
             if content_elem is not None:
-                correct_label = content_elem.text
+                correct_label.append(content_elem.text)
     return correct_label
 
 
@@ -210,7 +210,7 @@ def convert_quiz_to_word_advanced_pandoc(dat_content, word_file_path, image_dir=
                 choice_text = html_to_plain_text(choice)
                 #run = para.add_run(f"{chr(65+j)}) {choice_text}")
                 #html += "<ol>"
-                if label == correct_label:
+                if label in correct_label:
                     #html += f"<li><span style=\"color:red;\">{chr(65+j)}{choice_text}</span></li>"
                     html += f"<li>{choice_text}</li>"
                     #answer_text = f"Answer: {chr(65+j)}"
@@ -280,9 +280,12 @@ def convert_quiz_to_word_advanced(dat_content, word_file_path, bank_names, image
                     # not likely to ever happen
                     break #break the loop so we don't continue past z
                 option_letter = chr(97 + j)
-                if label == correct_label:
+                if label in correct_label:
                     if lams:
-                        answer_text = f"Answer: {option_letter}"
+                        if answer_text == "":
+                            answer_text = f"Answer: {option_letter}"
+                        else:
+                            answer_text += f",{option_letter}"
                         red = False
                     else:
                         red = True
