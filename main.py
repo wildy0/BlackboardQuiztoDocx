@@ -295,6 +295,7 @@ def convert_quiz_to_word_advanced(dat_content, word_file_path, bank_names, image
                 if not lams:
                     add_numbered_paragraph(doc, choice_text, new_list=new, red=red)
                 else:
+                    #lams is fussy with lists and so we need it like this
                     doc.add_paragraph(f"{option_letter}) {choice_text}")
                 if new:
                     new = False

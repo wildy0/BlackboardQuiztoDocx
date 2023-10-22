@@ -7,9 +7,32 @@ from docx.enum.text import WD_BREAK
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from lxml import etree
+import random
 
-new_number = 1
+new_number = 0
 root = None
+
+
+def generate_pseudo_random_durableId(prefix):
+    prefix_str = str(prefix)
+    prefix_length = len(prefix_str)
+
+    # Ensure the prefix is not longer than 10 digits
+    if prefix_length > 10:
+        raise ValueError("The prefix should not be longer than 10 digits.")
+
+    # Calculate the minimum and maximum length for the random part
+    min_length = max(1, 9 - prefix_length)
+    max_length = 10 - prefix_length
+
+    # Generate the random part
+    random_part = random.randint(10 ** (min_length - 1), 10 ** max_length - 1)
+
+    # Concatenate the prefix and the random part
+    durableId = int(f"{prefix_str}{random_part}")
+
+    return durableId
+
 
 def manual_deepcopy(element):
     # Create a new element with the same tag, attributes and text
@@ -25,7 +48,7 @@ def manual_deepcopy(element):
     return new_element
 
 
-def duplicate_numbering_format(doc, new_ilvl):
+def duplicate_numbering_format(doc, new_number):
     global root
     if root is None:
         # Access numbering part (numbering.xml)
@@ -34,52 +57,84 @@ def duplicate_numbering_format(doc, new_ilvl):
         # Parse numbering XML with lxml
         root = etree.fromstring(numbering_xml)
 
-    # Find the 'w:abstractNum' element with 'multilevelType="hybridMultilevelType"'
-    #abstract_nums = root.xpath('.//w:abstractNum',
-    abstract_nums=root.xpath('//w:numbering',
+    # Find the 'w:numbering' element
+
+    numbering = root.xpath('//w:numbering',
                                namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-    target_abstract_num = None
-    copy_abstract_num = None
-    maximum_level = None
-    highest_ilvl = None
+    # target_abstract_num = None
+    # highest_abstract_element = None
+    # copy_w = None
+    # maximum_level = None
+    highest_w_element = None
 
-    if abstract_nums is not None:
-        lvl_1_elements = abstract_nums[0].xpath('./w:num', namespaces={
+    if numbering is not None:
+        w_elements = numbering[0].xpath('./w:num', namespaces={
             'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-        if lvl_1_elements:
-            highest_ilvl = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId')) for e in lvl_1_elements)
+        if w_elements:
+            highest_w_element = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId')) for e in w_elements)
 
+        if new_number > highest_w_element:
+            new_ilvl = highest_w_element + 1
+        #     abstract_elements = numbering[0].xpath('./w:abstractNum', namespaces={
+        #         'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
+            # if abstract_elements:
+            #     highest_abstract_element = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')) for e in abstract_elements)
 
-        if highest_ilvl is not None:
-            maximum_level = highest_ilvl
-            #print(f"Maximum number xml is {maximum_level}")
-            if new_ilvl > maximum_level:
+            # if highest_abstract_element is not None:
+            #     print(f"Maximum abstract is {highest_abstract_element}")
+                #we don't actually need to copy this but if there is different formatting this could be done
+
+                # abstract_copy_elements = numbering[0].xpath(f'.//w:abstractNum[@w:abstractNumId="{highest_abstract_element}"]', namespaces={
+                #         'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
+                # new_abstract_element = manual_deepcopy(abstract_copy_elements[0])
+                # new_abstract_num = highest_abstract_element + 1
+                #
+                # new_abstract_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId', str(new_abstract_num))
+                # numbering[0].append(new_abstract_element)
+
+            if highest_w_element is not None:
+                maximum_level = highest_w_element
+                #print(f"Maximum W xml is {maximum_level}")
+
                 #print(f"Duplicating xml numbering for {new_ilvl}")
-
-                # lvl_f_elements = abstract_nums[0].xpath('.//w:lvl[@w:ilvl="2"]', namespaces={
-                #     'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-                lvl_f_elements = abstract_nums[0].xpath('.//w:num[@w:numId="2"]', namespaces={
+                w_copy_elements = numbering[0].xpath(f'.//w:num[@w:numId="{maximum_level}"]', namespaces={
                     'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
 
-                if lvl_f_elements:
-                    copy_abstract_num = lvl_f_elements[0]
+                if w_copy_elements:
+                    copy_w = w_copy_elements[0]
+                    # If the target 'w:abstractNum' exists, find the 'w:lvl' elements to duplicate
+                    if copy_w is not None:
+                            # Create a new 'w:lvl' as a clone of the 'w:lvl' with '@w:ilvl=1'
+                            # new_element = etree.Element(abstract_num.tag, nsmap=abstract_num.nsmap)
+                            #
+                            # # Clone children
+                            # for child in target_abstract_num:
+                            #     new_element.append(child)
+                            new_element = manual_deepcopy(copy_w)
+                            #new_abstract_num = new_ilvl # do this for now
+                            # Update the 'ilvl' value
+                            new_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId', str(new_ilvl))
 
-                # If the target 'w:abstractNum' exists, find the 'w:lvl' elements to duplicate
-                if copy_abstract_num is not None:
-                        # Create a new 'w:lvl' as a clone of the 'w:lvl' with '@w:ilvl=1'
-                        # new_element = etree.Element(abstract_num.tag, nsmap=abstract_num.nsmap)
-                        #
-                        # # Clone children
-                        # for child in target_abstract_num:
-                        #     new_element.append(child)
-                        new_element = manual_deepcopy(copy_abstract_num)
+                            # this sets a pseudo-random durable ID which is unique for the list but this does not seem to be necessary anyway
+                            # new_element.set('{http://schemas.microsoft.com/office/word/2016/wordml/cid}durableId',
+                            #                 str(generate_pseudo_random_durableId(new_ilvl)))
 
-                        # Update the 'ilvl' value
-                        new_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId', str(new_ilvl))
+                            # lvl_override = etree.SubElement(new_element,'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lvlOverride')
+                            # lvl_override.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}ilvl','0')
+                            # start_override = etree.SubElement(lvl_override,'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}startOverride')
+                            # start_override.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val','1')
+                            # < w: lvlOverride w: ilvl = "0" />
+                            #    <  w: startOverride w: val = "1" / >
+                            # < / w: lvlOverride >
 
-                        # Append the new 'w:lvl' to 'w:abstractNum'
-                        abstract_nums[0].append(new_element)
-
+                            #abstract_num_id = new_element.find('./{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')
+                            #abstract_num_id.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(new_abstract_num))
+                            # # Append the new 'w:lvl' to 'w:numbering'
+                            numbering[0].append(new_element)
+        else:
+                #print(f"Existing level {new_number}")
+                new_ilvl = new_number
+    return new_ilvl
     # new_xml = etree.tostring(root, pretty_print=True)
     # numbering_part._element.clear()
     # numbering_part._element.append(etree.fromstring(new_xml))
@@ -93,10 +148,12 @@ def add_numbered_paragraph(doc,text, new_list=False, red=False):
     if new_list:
         #print(f"Starting new list {new_number}")
         #restart_numbering(p, 0, 0)
-        duplicate_numbering_format(doc, new_number)
-        restart_numbering(p, 0, new_number)
         new_number = new_number + 1
+        new_number = duplicate_numbering_format(doc, new_number)
+        restart_numbering(p, 0, new_number)
         #new_number += 1
+    else:
+        restart_numbering(p, 0, new_number)
     run = p.add_run(text)
     if red:
         run.font.color.rgb = RGBColor(255, 0, 0)
@@ -104,12 +161,16 @@ def add_numbered_paragraph(doc,text, new_list=False, red=False):
 
 def update_docx_numbering(doc):
     global root
+    global new_number
     if root is not None:
-        new_xml = etree.tostring(root, pretty_print=True)
+        # new_xml = etree.tostring(root, pretty_print=True)
         numbering_part = doc.part.numbering_part
-        numbering_part._element.clear()
-        numbering_part._element.append(etree.fromstring(new_xml))
+        # numbering_part._element.clear()
+        # numbering_part._element.append(etree.fromstring(new_xml))
+        numbering_part._element = root
+        #reset these for the next document
         root = None
+    new_number = 0
 
 
 # Function to restart numbering
@@ -123,9 +184,10 @@ def restart_numbering(paragraph, ilvl_val=0, numId_val=3):
     ilvl.set(qn('w:val'), ilvl_val)  # Set ilvl value
     numId = numPr.get_or_add_numId()
     numId.set(qn('w:val'), numId_val)  # Set numId value
-    restart = OxmlElement('w:isRestart')
-    restart.set(qn('w:val'), '1')
-    numPr.insert(1, restart)  # Insert
+    #this is not actually needed and has no effect
+    # restart = OxmlElement('w:isRestart')
+    # restart.set(qn('w:val'), '1')
+    # numPr.insert(1, restart)  # Insert
 
 
 def find_image_by_xid(xid, image_dir):
