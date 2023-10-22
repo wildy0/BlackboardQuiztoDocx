@@ -48,7 +48,15 @@ def manual_deepcopy(element):
     return new_element
 
 
-def duplicate_numbering_format(doc, new_number):
+def generate_nsid(nsid_list):
+    new_nsid = "{:08X}".format(random.randint(0, 0xFFFFFFFF))
+    while new_nsid in nsid_list:
+        new_nsid = "{:08X}".format(random.randint(0, 0xFFFFFFFF))
+    return new_nsid
+
+
+
+def duplicate_numbering_format(doc):
     global root
     if root is None:
         # Access numbering part (numbering.xml)
@@ -73,32 +81,41 @@ def duplicate_numbering_format(doc, new_number):
         if w_elements:
             highest_w_element = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId')) for e in w_elements)
 
-        if new_number > highest_w_element:
+        #if new_number > highest_w_element:
+        if True:
             new_ilvl = highest_w_element + 1
-        #     abstract_elements = numbering[0].xpath('./w:abstractNum', namespaces={
-        #         'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-            # if abstract_elements:
-            #     highest_abstract_element = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')) for e in abstract_elements)
+            abstract_elements = numbering[0].xpath('./w:abstractNum', namespaces={
+                'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
+            if abstract_elements:
+                highest_abstract_element = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')) for e in abstract_elements)
+                nsid_list = [e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val') for e in numbering[0].findall('.//w:abstractNum/w:nsid', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})]
 
-            # if highest_abstract_element is not None:
-            #     print(f"Maximum abstract is {highest_abstract_element}")
-                #we don't actually need to copy this but if there is different formatting this could be done
+            if highest_abstract_element is not None:
+                #print(f"Maximum abstract is {highest_abstract_element}")
 
-                # abstract_copy_elements = numbering[0].xpath(f'.//w:abstractNum[@w:abstractNumId="{highest_abstract_element}"]', namespaces={
-                #         'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-                # new_abstract_element = manual_deepcopy(abstract_copy_elements[0])
-                # new_abstract_num = highest_abstract_element + 1
-                #
-                # new_abstract_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId', str(new_abstract_num))
-                # numbering[0].append(new_abstract_element)
+                abstract_copy_elements = numbering[0].xpath(f'.//w:abstractNum[@w:abstractNumId="{highest_abstract_element}"]', namespaces={
+                        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
+                new_abstract_element = manual_deepcopy(abstract_copy_elements[0])
+                new_abstract_num = highest_abstract_element + 1
+
+                new_abstract_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId', str(new_abstract_num))
+
+                abstract_nsid = new_abstract_element.find(
+                    './{http://schemas.openxmlformats.org/wordprocessingml/2006/main}nsid')
+                abstract_nsid.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(generate_nsid(nsid_list)))
+
+                parent = abstract_copy_elements[0].getparent()
+                pos_to_place = parent.index(abstract_copy_elements[0])
+                numbering[0].insert(pos_to_place + 1, new_abstract_element)
 
             if highest_w_element is not None:
                 maximum_level = highest_w_element
                 #print(f"Maximum W xml is {maximum_level}")
 
-                #print(f"Duplicating xml numbering for {new_ilvl}")
-                w_copy_elements = numbering[0].xpath(f'.//w:num[@w:numId="{maximum_level}"]', namespaces={
+                #print(f"Duplicating xml numbering for {new_ilvl}") #always use 1 as this is the right one
+                w_copy_elements = numbering[0].xpath(f'.//w:num[@w:numId="1"]', namespaces={
                     'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
+                new_ilvl = maximum_level + 1
 
                 if w_copy_elements:
                     copy_w = w_copy_elements[0]
@@ -127,8 +144,8 @@ def duplicate_numbering_format(doc, new_number):
                             #    <  w: startOverride w: val = "1" / >
                             # < / w: lvlOverride >
 
-                            #abstract_num_id = new_element.find('./{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')
-                            #abstract_num_id.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(new_abstract_num))
+                            abstract_num_id = new_element.find('./{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')
+                            abstract_num_id.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(new_abstract_num))
                             # # Append the new 'w:lvl' to 'w:numbering'
                             numbering[0].append(new_element)
         else:
@@ -148,11 +165,13 @@ def add_numbered_paragraph(doc,text, new_list=False, red=False):
     if new_list:
         #print(f"Starting new list {new_number}")
         #restart_numbering(p, 0, 0)
-        new_number = new_number + 1
-        new_number = duplicate_numbering_format(doc, new_number)
+        #new_number = new_number + 1
+        new_number = duplicate_numbering_format(doc)
+        #print(f"Starting at {new_number}")
         restart_numbering(p, 0, new_number)
         #new_number += 1
     else:
+        #print(f"setting to {new_number}")
         restart_numbering(p, 0, new_number)
     run = p.add_run(text)
     if red:

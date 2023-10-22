@@ -292,7 +292,8 @@ def convert_quiz_to_word_advanced(dat_content, word_file_path, bank_names, image
                 else:
                     red = False
 
-                if not lams:
+                #if not lams:
+                if True:
                     add_numbered_paragraph(doc, choice_text, new_list=new, red=red)
                 else:
                     #lams is fussy with lists and so we need it like this
