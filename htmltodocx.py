@@ -311,6 +311,12 @@ def handle_table(doc, element, colour):
                 print(f"Error: Could not access cell at row {i}, column {j} incorrect or unsupported table format.")
                 break
 
+            # Merge cells if colspan > 1
+            if cell_colspan > 1:
+                merge_to = min(j + cell_colspan - 1, col_count - 1)  # Ensure we don't exceed the table size
+                cell_to_merge = table.cell(i, merge_to)
+                cell.merge(cell_to_merge)
+
             cell.text = cell_text
             if colour:
                 for paragraph in cell.paragraphs:
