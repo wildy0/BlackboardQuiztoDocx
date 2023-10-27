@@ -278,37 +278,6 @@ def handle_paragraph(doc, element, colour, paragraph):
             font.color.rgb = RGBColor(255, 0, 0)
 
 
-# def handle_table(doc, element, colour):
-#     table_data = []
-#     for row in element.find_all('tr'):
-#         row_data = []
-#         for cell in row.find_all(['td', 'th']):
-#             row_data.append(cell.text)
-#         table_data.append(row_data)
-#
-#     # Check if table_data is empty
-#     if not table_data:
-#         return
-#
-#     # Find the maximum number of columns
-#     col_count = max(len(row) for row in table_data)
-#     row_count = len(table_data)
-#
-#     # Create the table
-#     table = doc.add_table(rows=row_count, cols=col_count)
-#     set_table_borders(table)
-#
-#     # Populate the table
-#     for i, row_data in enumerate(table_data):
-#         for j, cell_data in enumerate(row_data):
-#             cell = table.cell(i, j)
-#             cell.text = cell_data
-#             if colour:
-#                 for paragraph in cell.paragraphs:
-#                     for run in paragraph.runs:
-#                         run.font.color.rgb = RGBColor(255, 0, 0)
-
-
 def handle_table(doc, element, colour):
     table_data = []
     for row in element.find_all('tr'):
