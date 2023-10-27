@@ -4,7 +4,6 @@ import re
 from bs4 import BeautifulSoup, NavigableString
 from docx.shared import RGBColor, Mm
 from docx.enum.text import WD_BREAK
-from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from lxml import etree
 import random
@@ -66,95 +65,60 @@ def duplicate_numbering_format(doc):
         root = etree.fromstring(numbering_xml)
 
     # Find the 'w:numbering' element
-
     numbering = root.xpath('//w:numbering',
                                namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-    # target_abstract_num = None
-    # highest_abstract_element = None
-    # copy_w = None
-    # maximum_level = None
     highest_w_element = None
-
     if numbering is not None:
         w_elements = numbering[0].xpath('./w:num', namespaces={
             'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
         if w_elements:
             highest_w_element = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId')) for e in w_elements)
+        new_numId = highest_w_element + 1
+        abstract_elements = numbering[0].xpath('./w:abstractNum', namespaces={
+            'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
+        if abstract_elements:
+            highest_abstract_element = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')) for e in abstract_elements)
+            nsid_list = [e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val') for e in numbering[0].findall('.//w:abstractNum/w:nsid', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})]
 
-        #if new_number > highest_w_element:
-        if True:
-            new_ilvl = highest_w_element + 1
-            abstract_elements = numbering[0].xpath('./w:abstractNum', namespaces={
-                'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-            if abstract_elements:
-                highest_abstract_element = max(int(e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')) for e in abstract_elements)
-                nsid_list = [e.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val') for e in numbering[0].findall('.//w:abstractNum/w:nsid', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})]
-
-            if highest_abstract_element is not None:
-                #print(f"Maximum abstract is {highest_abstract_element}")
-
-                abstract_copy_elements = numbering[0].xpath(f'.//w:abstractNum[@w:abstractNumId="{highest_abstract_element}"]', namespaces={
-                        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-                new_abstract_element = manual_deepcopy(abstract_copy_elements[0])
-                new_abstract_num = highest_abstract_element + 1
-
-                new_abstract_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId', str(new_abstract_num))
-
-                abstract_nsid = new_abstract_element.find(
-                    './{http://schemas.openxmlformats.org/wordprocessingml/2006/main}nsid')
-                abstract_nsid.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(generate_nsid(nsid_list)))
-
-                parent = abstract_copy_elements[0].getparent()
-                pos_to_place = parent.index(abstract_copy_elements[0])
-                numbering[0].insert(pos_to_place + 1, new_abstract_element)
-
-            if highest_w_element is not None:
-                maximum_level = highest_w_element
-                #print(f"Maximum W xml is {maximum_level}")
-
-                #print(f"Duplicating xml numbering for {new_ilvl}") #always use 1 as this is the right one
-                w_copy_elements = numbering[0].xpath(f'.//w:num[@w:numId="1"]', namespaces={
+        if highest_abstract_element is not None:
+            #print(f"Maximum abstract is {highest_abstract_element}")
+            abstract_copy_elements = numbering[0].xpath(f'.//w:abstractNum[@w:abstractNumId="{highest_abstract_element}"]', namespaces={
                     'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-                new_ilvl = maximum_level + 1
+            new_abstract_element = manual_deepcopy(abstract_copy_elements[0])
+            new_abstract_num = highest_abstract_element + 1
+            new_abstract_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId', str(new_abstract_num))
+            abstract_nsid = new_abstract_element.find(
+                './{http://schemas.openxmlformats.org/wordprocessingml/2006/main}nsid')
+            abstract_nsid.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(generate_nsid(nsid_list)))
+            parent = abstract_copy_elements[0].getparent()
+            pos_to_place = parent.index(abstract_copy_elements[0])
+            numbering[0].insert(pos_to_place + 1, new_abstract_element)
+        if highest_w_element is not None:
+            maximum_numID = highest_w_element
+            #print(f"Maximum W xml is {maximum_numID}")
+            #print(f"Duplicating xml numbering for {new_numId}") #always use 1 as this is the right one
+            w_copy_elements = numbering[0].xpath(f'.//w:num[@w:numId="1"]', namespaces={
+                'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
+            new_numId = maximum_numID + 1
+            if w_copy_elements:
+                copy_w = w_copy_elements[0]
+                # If the target 'w:abstractNum' exists, find the 'w:lvl' elements to duplicate
+                if copy_w is not None:
+                    # Create a new 'w:lvl' as a clone of the 'w:lvl' with '@w:ilvl=1'
+                    # new_element = etree.Element(abstract_num.tag, nsmap=abstract_num.nsmap)
+                    new_element = manual_deepcopy(copy_w)
+                    # Update the 'numId' value
+                    new_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId', str(new_numId))
 
-                if w_copy_elements:
-                    copy_w = w_copy_elements[0]
-                    # If the target 'w:abstractNum' exists, find the 'w:lvl' elements to duplicate
-                    if copy_w is not None:
-                            # Create a new 'w:lvl' as a clone of the 'w:lvl' with '@w:ilvl=1'
-                            # new_element = etree.Element(abstract_num.tag, nsmap=abstract_num.nsmap)
-                            #
-                            # # Clone children
-                            # for child in target_abstract_num:
-                            #     new_element.append(child)
-                            new_element = manual_deepcopy(copy_w)
-                            #new_abstract_num = new_ilvl # do this for now
-                            # Update the 'ilvl' value
-                            new_element.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId', str(new_ilvl))
+                    # this sets a pseudo-random durable ID which is unique for the list but this does not seem to be necessary anyway
+                    # new_element.set('{http://schemas.microsoft.com/office/word/2016/wordml/cid}durableId',
+                    #                 str(generate_pseudo_random_durableId(new_numId)))
+                    abstract_num_id = new_element.find('./{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')
+                    abstract_num_id.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(new_abstract_num))
+                    # # Append the new 'w:lvl' to 'w:numbering'
+                    numbering[0].append(new_element)
 
-                            # this sets a pseudo-random durable ID which is unique for the list but this does not seem to be necessary anyway
-                            # new_element.set('{http://schemas.microsoft.com/office/word/2016/wordml/cid}durableId',
-                            #                 str(generate_pseudo_random_durableId(new_ilvl)))
-
-                            # lvl_override = etree.SubElement(new_element,'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lvlOverride')
-                            # lvl_override.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}ilvl','0')
-                            # start_override = etree.SubElement(lvl_override,'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}startOverride')
-                            # start_override.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val','1')
-                            # < w: lvlOverride w: ilvl = "0" />
-                            #    <  w: startOverride w: val = "1" / >
-                            # < / w: lvlOverride >
-
-                            abstract_num_id = new_element.find('./{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId')
-                            abstract_num_id.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(new_abstract_num))
-                            # # Append the new 'w:lvl' to 'w:numbering'
-                            numbering[0].append(new_element)
-        else:
-                #print(f"Existing level {new_number}")
-                new_ilvl = new_number
-    return new_ilvl
-    # new_xml = etree.tostring(root, pretty_print=True)
-    # numbering_part._element.clear()
-    # numbering_part._element.append(etree.fromstring(new_xml))
+    return new_numId
 
 
 # Function to add a paragraph with numbering
@@ -164,12 +128,9 @@ def add_numbered_paragraph(doc,text, new_list=False, red=False):
     p = doc.add_paragraph(style='List Paragraph letter')
     if new_list:
         #print(f"Starting new list {new_number}")
-        #restart_numbering(p, 0, 0)
-        #new_number = new_number + 1
         new_number = duplicate_numbering_format(doc)
         #print(f"Starting at {new_number}")
         restart_numbering(p, 0, new_number)
-        #new_number += 1
     else:
         #print(f"setting to {new_number}")
         restart_numbering(p, 0, new_number)
@@ -232,16 +193,6 @@ def get_text_width(document):
 def add_html_to_word(doc, html, colour, image_dir):
     soup = BeautifulSoup(html, 'html.parser')
     process_elements(doc, soup, colour, image_dir, doc.add_paragraph())
-    # if not paragraph_found:
-    #     text_content = soup.get_text()
-    #     if text_content.strip():  # Check if the text is not just whitespace
-    #         if colour:
-    #             paragraph_answer = doc.add_paragraph()
-    #             run = paragraph_answer.add_run(text_content)
-    #             font = run.font
-    #             font.color.rgb = RGBColor(255, 0, 0)
-    #         else:
-    #             doc.add_paragraph(text_content)
 
 
 def process_elements(doc, elements, colour, image_dir, paragraph):
@@ -275,10 +226,8 @@ def process_elements(doc, elements, colour, image_dir, paragraph):
         elif element.name.startswith('h') and element.name[1:].isdigit():
             level = int(element.name[1:]) - 1
             text = element.get_text()
-            #paragraph = doc.add_paragraph()
             doc.add_heading(text, level=level)
             paragraph = doc.add_paragraph()
-            #print("found heading")
         elif element.name == 'sup':
             text_content = element.get_text()
             if text_content.strip():  # Check if the text is not just whitespace
@@ -337,11 +286,19 @@ def handle_table(doc, element, colour):
             row_data.append(cell.text)
         table_data.append(row_data)
 
+    # Check if table_data is empty
+    if not table_data:
+        return
+
+    # Find the maximum number of columns
+    col_count = max(len(row) for row in table_data)
     row_count = len(table_data)
-    col_count = len(table_data[0]) if table_data else 0
+
+    # Create the table
     table = doc.add_table(rows=row_count, cols=col_count)
     set_table_borders(table)
 
+    # Populate the table
     for i, row_data in enumerate(table_data):
         for j, cell_data in enumerate(row_data):
             cell = table.cell(i, j)
