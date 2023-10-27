@@ -283,30 +283,47 @@ def handle_table(doc, element, colour):
     for row in element.find_all('tr'):
         row_data = []
         for cell in row.find_all(['td', 'th']):
-            row_data.append(cell.text)
+            text = cell.text
+            colspan = int(cell.get('colspan', 1))
+            row_data.append((text, colspan))
         table_data.append(row_data)
 
-    # Check if table_data is empty
     if not table_data:
         return
 
-    # Find the maximum number of columns
-    col_count = max(len(row) for row in table_data)
+    col_count = max(sum(cell[1] for cell in row) for row in table_data)
     row_count = len(table_data)
 
-    # Create the table
     table = doc.add_table(rows=row_count, cols=col_count)
     set_table_borders(table)
 
-    # Populate the table
     for i, row_data in enumerate(table_data):
-        for j, cell_data in enumerate(row_data):
-            cell = table.cell(i, j)
-            cell.text = cell_data
+        j = 0
+        for cell_text, cell_colspan in row_data:
+            # Check if j exceeds the maximum number of columns
+            if j >= col_count:
+                print(f"Warning: Skipping cell at row {i}, column {j} due to incorrect colspan in table.")
+                break
+
+            try:
+                cell = table.cell(i, j)
+            except IndexError:
+                print(f"Error: Could not access cell at row {i}, column {j} incorrect or unsupported table format.")
+                break
+
+            # Merge cells if colspan > 1
+            if cell_colspan > 1:
+                merge_to = min(j + cell_colspan - 1, col_count - 1)  # Ensure we don't exceed the table size
+                cell_to_merge = table.cell(i, merge_to)
+                cell.merge(cell_to_merge)
+
+            cell.text = cell_text
             if colour:
                 for paragraph in cell.paragraphs:
                     for run in paragraph.runs:
                         run.font.color.rgb = RGBColor(255, 0, 0)
+
+            j += cell_colspan
 
 
 def handle_image(doc, element, image_dir):
